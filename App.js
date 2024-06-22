@@ -1,35 +1,11 @@
 import React from "react";
-import { StyleSheet, Text, View, Button } from "react-native";
+import { StyleSheet, Text, View, Button, TextInput } from "react-native";
 import { useState } from "react";
-import forge from "node-forge";
 import { Network, Passport } from "@0xpass/passport";
-import { ReactNativeSigner } from "./signer";
+import axios from "axios";
+import { ReactNativeSigner } from "@0xpass/react-native-signer";
 
-export const generateAesKey = () => {
-  // Generate a random 256-bit key
-  const key = forge.random.getBytesSync(32); // 32 bytes * 8 bits/byte = 256 bits
-  return key;
-};
-
-export const aesEncrypt = async (plainText, encryptionKey) => {
-  if (!encryptionKey) {
-    throw Error("Encryption key not initialized");
-  }
-
-  const key = forge.util.createBuffer(encryptionKey).bytes();
-  const iv = forge.random.getBytesSync(12);
-  const cipher = forge.cipher.createCipher("AES-GCM", key);
-
-  cipher.start({ iv: iv });
-  cipher.update(forge.util.createBuffer(plainText, "utf8"));
-  cipher.finish();
-
-  const encrypted = cipher.output.getBytes();
-  const tag = cipher.mode.tag.getBytes();
-
-  const combined = forge.util.createBuffer(iv + encrypted + tag).getBytes();
-  return btoa(combined);
-};
+global.Buffer = require("buffer").Buffer;
 
 export default function App() {
   const [state, setState] = useState({
@@ -37,29 +13,47 @@ export default function App() {
     time: null,
   });
 
+  const [username, setUsername] = useState("");
+
+  // c91074d6-7f09-43a0-a1c8-c94a55ec8f29
+  // Create Passport instance with axios interceptor
   const passport = new Passport({
-    scopeId: "40c44258-6d9b-404c-b4ae-da83fe1d1696",
+    scopeId: "074f376c-4002-4ada-a827-b49ba743c4f8",
     signer: new ReactNativeSigner({
-      rpId: "passkey-http.alkassimk.workers.dev", // Update to match the domain where `apple-app-site-association` is hosted
-      rpName: "Passkey Example", // Update to your RP name
+      rpId: "passkey-http.alkassimk.workers.dev",
+      rpName: "Passkey Example",
     }),
     network: Network.LOCAL,
   });
 
-  async function setupEncryption() {
+  // Function to set up encryption and handle registration
+  async function register() {
+    // Adding axios interceptor to modify localhost to ngrok URL and log requests
+    axios.interceptors.request.use((config) => {
+      if (config.url && config.url.includes("localhost:9545")) {
+        const originalUrl = config.url;
+        config.url = config.url.replace(
+          "http://localhost:9545",
+          "https://29f1-2c0f-2a80-67-9a10-98b9-92a3-8991-523e.ngrok-free.app"
+        );
+        console.log(
+          `Modified request URL from ${originalUrl} to ${config.url}`
+        );
+      }
+
+      return config;
+    });
+
     try {
       await passport.setupEncryption();
       console.log("Encryption setup complete");
 
-      console.log("here");
       try {
         const res = await passport.register({
-          username: "helloooo",
-          userDisplayName: "helloooo",
+          username: username,
+          userDisplayName: username,
         });
-
         console.log("Registration response:", res);
-        console.log("here 2");
       } catch (registerError) {
         console.error("Error during registration:", registerError);
       }
@@ -68,11 +62,46 @@ export default function App() {
     }
   }
 
-  run = () => {
+  async function authenticate() {
+    // Adding axios interceptor to modify localhost to ngrok URL and log requests
+    axios.interceptors.request.use((config) => {
+      if (config.url && config.url.includes("localhost:9545")) {
+        const originalUrl = config.url;
+        config.url = config.url.replace(
+          "http://localhost:9545",
+          "https://29f1-2c0f-2a80-67-9a10-98b9-92a3-8991-523e.ngrok-free.app"
+        );
+        console.log(
+          `Modified request URL from ${originalUrl} to ${config.url}`
+        );
+      }
+
+      return config;
+    });
+
+    try {
+      await passport.setupEncryption();
+      console.log("Encryption setup complete");
+
+      try {
+        const res = await passport.authenticate({
+          username: username,
+          userDisplayName: username,
+        });
+        console.log("authentication response:", res);
+      } catch (authError) {
+        console.error("Error during authentication:", authError);
+      }
+    } catch (setupError) {
+      console.error("Error during setupEncryption:", setupError);
+    }
+  }
+
+  // Function to run encryption process
+  const run = () => {
     const start = new Date().getTime();
     console.log(aesEncrypt("hello", generateAesKey()));
 
-    // Give time to update UI
     setTimeout(() => {
       setState({
         running: false,
@@ -83,10 +112,17 @@ export default function App() {
 
   return (
     <View style={styles.container}>
+      <TextInput value={username} onChangeText={setUsername} />
       <Button
-        title="Generate"
+        title="register"
         onPress={async () => {
-          await setupEncryption();
+          await register();
+        }}
+      />
+      <Button
+        title="authenticate"
+        onPress={async () => {
+          await authenticate();
         }}
       />
       {state.running && <Text>Running...</Text>}
@@ -95,6 +131,7 @@ export default function App() {
   );
 }
 
+// Styles for the app
 const styles = StyleSheet.create({
   container: {
     flex: 1,
