@@ -89,18 +89,6 @@ $ keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -s
 
 Note: a more convenient option if you're simply looking to run debug mode for your app: `npx expo run:android -d` will yield a dropdown of available devices and run your app in debug mode! But careful: **this doesn't work to test passkey functionality because the app won't be signed**.
 
-## `http` folder
-
-In the HTTP folder you'll find a folder with what's hosted at https://passkey-http.alkassimk.workers.dev. It contains a Cloudflare worker function to give `apple-app-site-association` the right MIME type.
-
-Otherwise it hosts static content:
-
-- `/.well-known/apple-app-site-association` (required for iOS passkeys)
-- `/.well-known/assetlinks.json` (required for Android passkeys)
-- `index.html` file to register and use passkeys on the web (nice to experiment with passkeys moving from web to native or vice versa)
-
-To run this locally: `npx wrangler pages dev http`.
-
 ## Troubleshooting
 
 ### com.apple.AuthenticationServices.AuthorizationError Code=1004
